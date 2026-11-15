@@ -6,7 +6,7 @@ json1 = r"""{
     {"verbatim_text": "SUOMI U. Nurmijärvi 17.6.1967 M. Koponen leg."},
     {"verbatim_text": "E714218"}
   ],
-  "verbatim_locality": "U. Nurmijarvi",
+  "verbatim_locality": "U. Nurmijärvi",
   "verbatim_collector": "M. Koponen",
   "verbatim_date": "17.6.1967",
   "verbatim_coordinates": "",
@@ -22,7 +22,7 @@ json2 = r"""{
     {"verbatim_text": "SUOMI U. Murnmijärvi 17.6.1967 M. Koponen leg."},
     {"verbatim_text": "E714218"}
   ],
-  "verbatim_locality": "U. Nurmijarvi",
+  "verbatim_locality": "U. Nurmijärvi",
   "verbatim_collector": "M. Koponen",
   "verbatim_date": "17.6.1967",
   "verbatim_coordinates": "",

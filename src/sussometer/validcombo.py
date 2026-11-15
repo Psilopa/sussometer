@@ -1,5 +1,6 @@
         
-def test_known_combinations(data, *args):
+def test_known_combinations(data:dict[str:Any],
+                            *args: Sequence) -> dict[str,floar]:
     sus = {k:0 for k in data.keys()} # Default to zero for all fields
     for ref in args:
         #Combo of fields to test
