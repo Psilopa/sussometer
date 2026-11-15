@@ -5,34 +5,27 @@
 # stdlib
 import json
 import logging
-import statistics
 # for main
 import sys
 import argparse
 from pathlib import Path
-
-# My own stuff
-from validcombo import test_known_combinations
-from testdata import *
-from refstorage import RefStorage, log as refstorage_log
-from tools import jaccard, load_ref_file
-from inst_specific import extract_alltext
 import pprint
 
+# My own stuff
+from validcombo import test_known_combination
+from testdata import *
+from refstorage import RefStorage, log as refstorage_log
+from tools import jaccard, load_ref_file, average
+import  inst_specific as local
+from itersheets.itersheets import Reader
+
+
 # Set up basic logging
-#LOGLEVEL = logging.DEBUG
-LOGLEVEL = logging.INFO
+LOGLEVEL = logging.DEBUG
+#LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s:%(message)s', level=LOGLEVEL)
 log = logging.getLogger(__name__)
 #refstorage_log = log
-
-def average(sussdict:dict[str,int|float], weights:None|Sequence[str|int]=None):
-    assert len(sussvector) > 0, "Cannot average an empty list." 
-    if not weights: return statistics.mean( sussvector.values() ) 
-    else:
-        assert len(sussvector) == len(weights) # TODO: Should raise an Error
-        return sum(g*val for (g, val) in zip(weights, sussvector.values())) / sum(weights)
-    return 2
 
 # Example call
 # python src/sussometer/sussometer.py -i testdata/needscompletion_300k_T.xlsx testdata/locality_collector.csv 
@@ -46,23 +39,32 @@ if __name__ == '__main__':
     print("Testing the susso-o-meter\n")
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", dest="input_file", type=Path, help="input (target) data file")
-    ap.add_argument('reference_files', nargs="+")
+    ap.add_argument('reference_files', type=Path, nargs="+")
     args = ap.parse_args()
+    # Load refence data
     refdata = []
-    for fn in args.reference_files:
-        filedata = load_ref_file( Path(fn) ) # Tuple of rows
+    for fpath in args.reference_files:
+        log.debug(f"Reading reference data file {fpath}.")
+        filedata = load_ref_file( fpath ) # Tuple of rows
         refdata.append( RefStorage(filedata) )
-        
-    d = json.loads(json1)
-    d["verbatim_locality"] = "U. Murmijärvi" # Set for testing
-#    print(d["verbatim_collector"])
-    # output: dictionary with same keys, int = [-1...1] values
-    sussvector = test_known_combinations(d, *refdata)
-    print("suss vector = ", pprint.pformat(sussvector) )
-    print("total suss value", average(sussvector) )
+            
+    # Load data to be processed
+    datareader = Reader(args.input_file)
+    datareader.open()
+    rowcounter = 0
+    donecounter = 0
+    for rowdict in datareader.dictrows():
+        rowcounter += 1
+        if local.exclude(rowdict):
+            sussvector = {} # No tests performed
+            continue # This row should not be analyzed
+        for ref in refdata:        
+            # output: dictionary with same keys, int = [-1...1] values
+            sussvector = test_known_combination(rowdict, ref)
+            print("suss vector = ", pprint.pformat(sussvector) )
+            print("total suss value", average(sussvector) )
+        # TODO: How should be assign suss values to individual fields in the combo is bad?
+        donecounter += 1
+    log.info(f"Processed {rowcounter} rows, of which {donecounter} had enough data for analysis.")
 
-    # Should be keep track of all individual values and do a weighted sum at the end?
-    # SOme testing
-    print("alltext =", extract_alltext(d))
-    print("jaccard =", jaccard(json1, json2) )
 
