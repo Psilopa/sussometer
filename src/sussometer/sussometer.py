@@ -21,8 +21,8 @@ from itersheets.itersheets import Reader
 
 
 # Set up basic logging
-LOGLEVEL = logging.DEBUG
-#LOGLEVEL = logging.INFO
+#LOGLEVEL = logging.DEBUG
+LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s:%(message)s', level=LOGLEVEL)
 log = logging.getLogger(__name__)
 #refstorage_log = log
@@ -61,6 +61,7 @@ if __name__ == '__main__':
         for ref in refdata:        
             # output: dictionary with same keys, int = [-1...1] values
             sussvector = test_known_combination(rowdict, ref)
+            print(rowdict["verbatim_collector"])
             print("suss vector = ", pprint.pformat(sussvector) )
             print("total suss value", average(sussvector) )
         # TODO: How should be assign suss values to individual fields in the combo is bad?
