@@ -5,6 +5,7 @@
 # stdlib
 import json
 import logging
+import statistics
 # for main
 import sys
 import argparse
@@ -16,6 +17,7 @@ from testdata import *
 from refstorage import RefStorage, log as refstorage_log
 from tools import jaccard, load_ref_file
 from inst_specific import extract_alltext
+import pprint
 
 # Set up basic logging
 #LOGLEVEL = logging.DEBUG
@@ -24,13 +26,24 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=LOGLEVEL)
 log = logging.getLogger(__name__)
 #refstorage_log = log
 
-# output: dictionary with same keys, int = [-1...1] values
+def average(sussdict:dict[str,int|float], weights:None|Sequence[str|int]=None):
+    assert len(sussvector) > 0, "Cannot average an empty list." 
+    if not weights: return statistics.mean( sussvector.values() ) 
+    else:
+        assert len(sussvector) == len(weights) # TODO: Should raise an Error
+        return sum(g*val for (g, val) in zip(weights, sussvector.values())) / sum(weights)
+    return 2
 
 # Example call
 # python src/sussometer/sussometer.py -i testdata/needscompletion_300k_T.xlsx testdata/locality_collector.csv 
 
+
+# TODO: EACH TEST* SHOULD RETURN A (DICT) WITH VALUES ONLY FOR THE TESTED BASES
+
+
 # For easy testing
 if __name__ == '__main__':
+    print("Testing the susso-o-meter\n")
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", dest="input_file", type=Path, help="input (target) data file")
     ap.add_argument('reference_files', nargs="+")
@@ -41,12 +54,14 @@ if __name__ == '__main__':
         refdata.append( RefStorage(filedata) )
         
     d = json.loads(json1)
-    print(d["verbatim_locality"])
-    print(d["verbatim_collector"])
-    values = test_known_combinations(d, *refdata)
+    d["verbatim_locality"] = "U. Murmijärvi" # Set for testing
+#    print(d["verbatim_collector"])
+    # output: dictionary with same keys, int = [-1...1] values
+    sussvector = test_known_combinations(d, *refdata)
+    print("suss vector = ", pprint.pformat(sussvector) )
+    print("total suss value", average(sussvector) )
 
     # Should be keep track of all individual values and do a weighted sum at the end?
-    print("suss value = ",values )
     # SOme testing
     print("alltext =", extract_alltext(d))
     print("jaccard =", jaccard(json1, json2) )
