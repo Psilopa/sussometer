@@ -43,7 +43,7 @@ if __name__ == '__main__':
     args = ap.parse_args()
     # Load refence data
     refdata = []
-    for fpath in args.reference_files:
+    for fpath in args.reference_files: # Read all reference files
         log.debug(f"Reading reference data file {fpath}.")
         filedata = load_ref_file( fpath ) # Tuple of rows
         refdata.append( RefStorage(filedata) )
@@ -63,7 +63,7 @@ if __name__ == '__main__':
             sussvector = test_known_combination(rowdict, ref)
             print(rowdict["verbatim_collector"])
             print("suss vector = ", pprint.pformat(sussvector) )
-            print("total suss value", average(sussvector) )
+#            print("total suss value", average(sussvector) )
         # TODO: How should be assign suss values to individual fields in the combo is bad?
         donecounter += 1
     log.info(f"Processed {rowcounter} rows, of which {donecounter} had enough data for analysis.")
