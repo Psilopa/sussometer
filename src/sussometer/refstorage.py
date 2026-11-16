@@ -20,13 +20,11 @@ class RefStorage():
         # dictionary of (data1, data1) -> suss_value
         self.index = {k:v for k,v in tmpind}
         del self._data # May want to expose this later
+
     @property
-    def fields(self:Self) -> tuple[str]: return self._fields 
+    def fields(self:Self) -> tuple[str]: 
+        return self._fields 
     
     def getsuss(self:Self,datatuple) -> float:
-        "Returns a dicionary mapping column_name: suss_value."
-#        print("getsuss input", datatuple)
-        output = self.index.get(datatuple,0.0)
-#        print("getsuss output", self.index.get(datatuple,0.0))
-        return self.index.get(datatuple,0.0)
+        return self.index.get(datatuple,None)
 

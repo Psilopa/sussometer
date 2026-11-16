@@ -55,9 +55,9 @@ if __name__ == '__main__':
         for ref in refdata:  # Iterate over reference datasets      
             # output: dictionary with same keys, int = [-1...1] values
             if not totalsuss:
-                totalsuss = SussVector( test_known_combination(rowdict, ref) )
+                totalsuss = test_known_combination(rowdict, ref)
             else:
-                totalsuss += SussVector( test_known_combination(rowdict, ref) )
+                totalsuss += test_known_combination(rowdict, ref)
 
         # Final results
         total = average(totalsuss, with_zeros=True)
