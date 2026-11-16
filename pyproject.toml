@@ -1,0 +1,48 @@
+# This is mainly docmumantation: for 'installing', use 
+# pip install -r requirements.txt
+[build-system]
+requires = ['setuptools==82.0.1', 'setuptools-scm==10.0.5']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'jkm'
+description = "A toolset to assigning AI-generated datasets (of insect specimen label data) and generating reference datasets from proofread and original AI output. "
+version = 'v0.01'
+#dynamic = ['version']
+authors = [ {name = "Jere Kahanpää"} ]
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">= 3.12" # Uses the typing 'type' keyword
+# These should also be listed in requirements.txt !
+dependencies = [   
+"itersheets"
+]
+
+[project.urls]
+Homepage = "https://github.com/Psilopa/sussometer"
+Repository = "https://github.com/Psilopa/sussometer"
+
+
+[tool.setuptools.packages.find]
+where = ["src/itertools"]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+#project-excludes = [
+#    "**/legacy/*",
+#    "**/typing.py",
+# For now, exclude the GUI and OCR as they are tricky
+#    "**/barcodes.py",
+#    "**/ocr.py",
+#]
+
+
+# Dynamic versioning, currently not used
+#[tool.setuptools_scm]
+#version_scheme = 'no-guess-dev'
+#local_scheme = 'no-local-version'
+#version_file = "VERSION.txt"
