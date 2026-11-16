@@ -19,7 +19,6 @@ class RefStorage():
         log.debug(f"1st data row = {self._data[0]}" )
         # dictionary of (data1, data1) -> suss_value
         self.index = {k:v for k,v in tmpind}
-        print(self.index)
         del self._data # May want to expose this later
     @property
     def fields(self:Self) -> tuple[str]: return self._fields 

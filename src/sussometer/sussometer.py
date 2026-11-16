@@ -13,12 +13,10 @@ import pprint
 
 # My own stuff
 from validcombo import test_known_combination
-from testdata import *
 from refstorage import RefStorage, log as refstorage_log
-from tools import jaccard, load_ref_file, average
+from tools import load_ref_file, average
 import  inst_specific as local
 from itersheets.itersheets import Reader
-
 
 # Set up basic logging
 #LOGLEVEL = logging.DEBUG
@@ -28,7 +26,7 @@ log = logging.getLogger(__name__)
 #refstorage_log = log
 
 # Example call
-# python src/sussometer/sussometer.py -i testdata/needscompletion_300k_T.xlsx testdata/locality_collector.csv 
+# python src/sussometer/sussometer.py -i testdata/needscompletion_300k_T.xlsx testdata/verbatim_leg_loc.csv testdata/verbatim_loc.csv
 
 
 # TODO: EACH TEST* SHOULD RETURN A (DICT) WITH VALUES ONLY FOR THE TESTED BASES
@@ -58,12 +56,14 @@ if __name__ == '__main__':
         if local.exclude(rowdict):
             sussvector = {} # No tests performed
             continue # This row should not be analyzed
-        for ref in refdata:        
+        for ref in refdata:  # Iterate over reference datasets      
             # output: dictionary with same keys, int = [-1...1] values
+
+            # TODO: we should combine results from various tests SOMEHOW
+
             sussvector = test_known_combination(rowdict, ref)
-            print(rowdict["verbatim_collector"])
             print("suss vector = ", pprint.pformat(sussvector) )
-#            print("total suss value", average(sussvector) )
+            print("total suss value", average(sussvector, with_zeros=False) )
         # TODO: How should be assign suss values to individual fields in the combo is bad?
         donecounter += 1
     log.info(f"Processed {rowcounter} rows, of which {donecounter} had enough data for analysis.")
