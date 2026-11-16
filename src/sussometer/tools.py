@@ -19,12 +19,13 @@ def load_ref_file(filepath:Path) -> tuple[str,...]:
         data.append(d)
     return tuple(data)
 
-def average(sussdict:dict[str,int|float], weights:None|Sequence[str|int]=None, with_zeros=False):
+decimals = 3 # Round to X decimals
+def average(sussdict:SussVector, weights:None|Sequence[str|int]=None, with_zeros=True):
     if not with_zeros: data = tuple(x for x in sussdict.values() if x)
     else: data = sussdict.values() 
     if len(data) == 0: return 0.0 # all values were zero and with_zeros=False)
-    if not weights: return statistics.mean( data ) 
+    if not weights: return round( statistics.mean( data ), decimals)
     else:
         assert len(data) == len(weights) # TODO: Should raise an Error
-        return sum(g*val for (g, val) in zip(weights, data) ) / sum(weights)
-    return 2
+        valsum = sum(g*val for (g, val) in zip(weights, data) )
+        return round( valsum / sum(weights) , decimals)

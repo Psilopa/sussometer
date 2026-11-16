@@ -17,6 +17,7 @@ from refstorage import RefStorage, log as refstorage_log
 from tools import load_ref_file, average
 import  inst_specific as local
 from itersheets.itersheets import Reader
+from sussvector import SussVector
 
 # Set up basic logging
 #LOGLEVEL = logging.DEBUG
@@ -24,13 +25,7 @@ LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s:%(message)s', level=LOGLEVEL)
 log = logging.getLogger(__name__)
 #refstorage_log = log
-
-# Example call
-# python src/sussometer/sussometer.py -i testdata/needscompletion_300k_T.xlsx testdata/verbatim_leg_loc.csv testdata/verbatim_loc.csv
-
-
-# TODO: EACH TEST* SHOULD RETURN A (DICT) WITH VALUES ONLY FOR THE TESTED BASES
-
+    
 
 # For easy testing
 if __name__ == '__main__':
@@ -52,20 +47,29 @@ if __name__ == '__main__':
     rowcounter = 0
     donecounter = 0
     for rowdict in datareader.dictrows():
+        totalsuss = None
         rowcounter += 1
         if local.exclude(rowdict):
-            sussvector = {} # No tests performed
+            totalsuss = SussVector() # Empty object
             continue # This row should not be analyzed
         for ref in refdata:  # Iterate over reference datasets      
             # output: dictionary with same keys, int = [-1...1] values
+            if not totalsuss:
+                totalsuss = SussVector( test_known_combination(rowdict, ref) )
+            else:
+                totalsuss += SussVector( test_known_combination(rowdict, ref) )
 
-            # TODO: we should combine results from various tests SOMEHOW
-
-            sussvector = test_known_combination(rowdict, ref)
-            print("suss vector = ", pprint.pformat(sussvector) )
-            print("total suss value", average(sussvector, with_zeros=False) )
+        # Final results
+        total = average(totalsuss, with_zeros=True)
+        if total > 0.01 or total < -0.01:
+            print("total suss dict =", pprint.pformat(totalsuss) )
+            print("total suss value =", total )
+            print("\n")
         # TODO: How should be assign suss values to individual fields in the combo is bad?
         donecounter += 1
     log.info(f"Processed {rowcounter} rows, of which {donecounter} had enough data for analysis.")
 
 
+
+# Example call
+# python src/sussometer/sussometer.py -i testdata/needscompletion_300k_T.xlsx testdata/verbatim_leg_loc.csv testdata/verbatim_loc.csv

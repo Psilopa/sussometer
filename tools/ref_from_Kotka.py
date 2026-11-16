@@ -7,6 +7,7 @@ fieldname1 [, fieldname2, ...], N-of-data-points, suss-value
 """
 
 import sys
+import re
 import json
 import pprint
 import difflib
@@ -28,6 +29,7 @@ def data_from_AI_output(rowdict):
         return {}
     d = json.loads( field )    
     return json.loads(d[ ai_content_key ])
+
     
 def valid_as_ref(rowdict) -> None:
     "Check of this row is good enough for a refernce. Raises a RefDataError on failure."
@@ -38,7 +40,9 @@ def valid_as_ref(rowdict) -> None:
         RefDataError(f"Missing marker '{good_enough_marker}' on row.") 
     # By default, accept
 
+
 class RefDataError(ValueError): pass
+
 
 text_minlength = 4 # Any string with this length can be compared on its own
 def extract_ref_from_Kotka_file(fp:Path,
@@ -72,6 +76,7 @@ def extract_ref_from_Kotka_file(fp:Path,
     infile.close()
     return outrows
 
+
 def handle_duplicates(outrows, cap_maxval = 5):
     """Convert rows to a dictionary. In case of duplicates, combines suss values.
 
@@ -101,13 +106,30 @@ def handle_duplicates(outrows, cap_maxval = 5):
         outdict[k] = ( float(v[0]/maxval), v[1] )
     return outdict
 
-def cmpstring(ai:Sequence,ok:Sequence) -> float|int :
-    "Compare string by strict match"
-    assert len(ai) == len(ok)
+
+def cmpstring(ai:Sequence,ok:Sequence, ignorechars = [r"\n",r"\t"], combinespaces = True) -> float|int:
+    """Compare string by strict match.
+
+    Keywords:
+	ignorechars: these characters will be deleted from the string before comparison. Uses regexp escapes.
+        combinechars: a list of regular expressions 
+	"""
+    re_spaces = r"\s+"
+    assert len(ai) == len(ok)    
     for x,y in zip(ai,ok):
+        if combinespaces:
+            x = re.sub(re_spaces, " ", x)
+            y = re.sub(re_spaces, " ", y)
+        for c in ignorechars:
+            x = re.sub(c, "", x)
+            y = re.sub(c, "", y)
         if x.lower() != y.lower(): return -1
     return 1 # If we did not fail, we succeesed
 
+
+
+
+# ------------------ main ---------------------
 if __name__ == '__main__':
     fp = sys.argv[1]
     # Extract 1
