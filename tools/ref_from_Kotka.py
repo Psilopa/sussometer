@@ -6,29 +6,26 @@ fieldname1 [, fieldname2, ...], N-of-data-points, suss-value
 
 """
 
+#STDLIB
 import sys
 import re
 import json
-import pprint
 import difflib
+import pprint
+import tomllib
+from pathlib import Path
+
+# My own packages
 from itersheets import itersheets
 
-#Parameters
-ai_output_field = "raw" # Column with raw AI output JSON
-ai_content_key = "output_text" # Where is the data in the AI output JSON
-
-quality_field_name = "check" # Column with quality indicators (for Kotka, this will go to datasets)
-good_enough_marker = "GX.19333" # If this string in in quality_field_name, try to use it
-cap_maxval_at = 3 # Normalization: all values are divided by the min(cap_maxval_at, highest_suss_value)
- 
-
-
 def data_from_AI_output(rowdict):
-    field = rowdict[ai_output_field]
-    if not field:
+    cell = rowdict[ai_output_field]
+    if not cell: return {}
+    try:
+        d = json.loads( cell )    
+        return json.loads(d[ ai_content_key ])
+    except json.decoder.JSONDecodeError:
         return {}
-    d = json.loads( field )    
-    return json.loads(d[ ai_content_key ])
 
     
 def valid_as_ref(rowdict) -> None:
@@ -55,6 +52,7 @@ def extract_ref_from_Kotka_file(fp:Path,
         try:
             valid_as_ref(d) # Raises an error on failure
             aidata = data_from_AI_output(d)
+            if not aidata: RefDataError(f"Could not read aidata.") 
             ai = []
             ok = []
             for field in fields:
@@ -93,8 +91,8 @@ def handle_duplicates(outrows, cap_maxval = 5):
             # One solution: add old and new suss values.
             # This means positives can cancel out negatives
             suss = float( outdict[index][0] ) + float(suss) # old  + new
-            suss = min( suss , cap_maxval_at ) # Cap suss at cap_maxval_at top
-            suss = max( suss , -cap_maxval_at ) # Cap suss at cap_maxval_at negative side
+            suss = min( suss , cap_maxval ) # Cap suss at cap_maxval_at top
+            suss = max( suss , -cap_maxval ) # Cap suss at cap_maxval_at negative side
             maxval = max( abs(suss), maxval )
             # Return 
             outdict[index] = (suss, #  Suss value
@@ -126,20 +124,22 @@ def cmpstring(ai:Sequence,ok:Sequence, ignorechars = [r"\n",r"\t"], combinespace
         if x.lower() != y.lower(): return -1
     return 1 # If we did not fail, we succeesed
 
+def outfile_format(orignal, fields, template):
+    op = Path(orignal)
+    stem = op.stem + template % "_".join(fields)
+    outp = op.with_stem(stem)
+    return outp
+    
 
-
-
-# ------------------ main ---------------------
-if __name__ == '__main__':
-    fp = sys.argv[1]
+def extract(fields, fp, conf):
     # Extract 1
-#    fields = ("verbatim_collector","verbatim_locality",)
-    fields = ("verbatim_collector",)
-#    fields = ("verbatim_locality",)
     outrows = extract_ref_from_Kotka_file(fp,  fields, cmpstring)
-    outdict = handle_duplicates(outrows, cap_maxval = cap_maxval_at)
+    outdict = handle_duplicates(outrows, cap_maxval = conf["output"]["cap_maxval_at"] )
     header = fields + ("sussvalue","n_datapoints")
-    outf = itersheets.Writer("verbatim_leg.csv", encoding="utf8")
+    oftempalate = conf["output"]["output_file_naming"]
+    outfilename = outfile_format(fp, fields, oftempalate)
+    print("outfilename = ", outfilename)
+    outf = itersheets.Writer(outfilename)
     outf.open("w",header)
     for (k,v) in outdict.items():
         outrow = k + v
@@ -150,4 +150,23 @@ if __name__ == '__main__':
                                )
     outf.close()
 
+
+# ------------------ main ---------------------
+if __name__ == '__main__':
+    with open("tools/ref_setup.toml", "rb") as f:
+        conf = tomllib.load(f)
+    pprint.pp(conf)
+    fp = sys.argv[1]
+    #Parameters
+    global ai_output_field
+    global quality_field_name
+    global ai_content_key
+    global good_enough_marker
+    ai_output_field = conf["input"]["ai_output_field"]
+    ai_content_key = conf["input"]["ai_content_key"]
+    quality_field_name = conf["input"]["quality_field_name"]
+    good_enough_marker = conf["input"]["good_enough_marker"]
+    for n in conf["fields"].keys():
+        fields = tuple(conf["fields"][n]['fieldnames'])
+        extract(fields, fp, conf)
 

@@ -1,0 +1,24 @@
+[input]
+# Column with raw AI output JSON
+ai_output_field = "MYRawOCRData"
+# Where is the data in the AI output JSON
+ai_content_key = "output_text" 
+# Column with quality indicators (for Kotka, this will go to datasets)
+quality_field_name = 'MYDatasetID[2]'
+# If this string in in quality_field_name, try to use it
+good_enough_marker = "GX.19333"
+
+[output]
+# A higher values leads to less top-ranked scores.
+cap_maxval_at = 3
+output_file_naming = "%s_ref"
+
+# field groups to process
+
+[fields.1]
+fieldnames = ["verbatim_collector","verbatim_locality"]
+[fields.2]
+fieldnames = ["verbatim_collector"]
+[fields.3]
+fieldnames = ["verbatim_locality"]
+
