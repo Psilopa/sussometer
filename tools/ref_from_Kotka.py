@@ -12,8 +12,14 @@ import pprint
 import difflib
 from itersheets import itersheets
 
-ai_output_field = "raw"
-ai_content_key = "output_text"
+#Parameters
+ai_output_field = "raw" # Column with raw AI output JSON
+ai_content_key = "output_text" # Where is the data in the AI output JSON
+
+quality_field_name = "check" # Column with quality indicators (for Kotka, this will go to datasets)
+good_enough_marker = "GX.19333" # If this string in in quality_field_name, try to use it
+
+
 def data_from_AI_output(rowdict):
     field = rowdict[ai_output_field]
     if not field:
@@ -21,15 +27,18 @@ def data_from_AI_output(rowdict):
     d = json.loads( field )    
     return json.loads(d[ ai_content_key ])
     
-good_enough_marker = "GX.19333"
-def valid_as_ref(rowdict) -> bool:
-    "Check of this row is good enough for a refernce"
-    qualityfield = rowdict["check"] # Note, this is not standard
-    if not qualityfield: return False
-    if good_enough_marker in qualityfield: return True
-    return False # By default, fail
+def valid_as_ref(rowdict) -> None:
+    "Check of this row is good enough for a refernce. Raises a RefDataError on failure."
+    if not quality_field_name in rowdict.keys():
+        raise RefDataError(f"No field '{quality_field_name}' on row.")
+    quality_val = rowdict[quality_field_name]
+    if not quality_val or (not good_enough_marker in quality_val):
+        RefDataError(f"Missing marker '{good_enough_marker}' on row.") 
+    # By default, accept
 
-text_minlength = 5 # Any string with this length can be compared on its own
+class RefDataError(ValueError): pass
+
+text_minlength = 4 # Any string with this length can be compared on its own
 def extract_ref_from_Kotka_file(fp:Path,
                                 fields:Sequence[str,...],
                                 cmpfunc:Callable):
@@ -37,22 +46,27 @@ def extract_ref_from_Kotka_file(fp:Path,
     infile.open()
     outrows = []
     for d in infile.dictrows():
-        # Check if valid as
-        if not valid_as_ref(d): continue
-        aidata = data_from_AI_output(d)
-        ai = []
-        ok = []
-        for field in fields:
-            tmpai = aidata.get(field,"") or ""
-            # is the text long enough for comparison
-            if len(tmpai) < text_minlength: continue 
-            ai.append( tmpai )
-            ok.append(d.get(field,"") or "" )
-        # Locality on it own
+        try:
+            valid_as_ref(d) # Raises an error on failure
+            aidata = data_from_AI_output(d)
+            ai = []
+            ok = []
+            for field in fields:
+                aivalue = aidata.get(field,"") or ""
+                # If any value too short, do not compare at all
+                if len(aivalue) < text_minlength :
+                    raise RefDataError(f"Value '{aivalue}' too short, will now use this row.") 
+                # is the text long enough for comparison
+                ai.append( aivalue )
+                ok.append(d.get(field,"") or "" )
+            # Locality on it own
             suss = cmpfunc(ai,ok)
-            n_values = 394384
             outrow = (tuple(ai), suss)
             outrows.append(outrow)
+        except RefDataError as msg:
+            #log.debug(f"Skipping row, reason: {msg}")            
+            # Some data did not 
+            pass
     infile.close()
     return outrows
 
@@ -63,45 +77,52 @@ def handle_duplicates(outrows):
     in set maximum
     """
     outdict = {}
-    maxval = 0
+    maxval = 0 # LArgest absolute value in dataset
     cap_maxval_at = 3
     # To save memory, delete from outrows as we go?
     for index, suss in outrows:
         # First data point with this index
         if index not in outdict: outdict[index] = (suss, 1)
         else:
-            # One solution: add old and new suss values
+            # One solution: add old and new suss values.
+            # This means positives can cancel out negatives
             suss = float( outdict[index][0] ) + float(suss) # old  + new
+            suss = min( suss , cap_maxval_at ) # Cap suss at cap_maxval_at top
+            suss = max( suss , -cap_maxval_at ) # Cap suss at cap_maxval_at negative side
             maxval = max( abs(suss), maxval )
-            # Cap suss at cap_maxval_at
-            suss = min( outdict[index][0] + suss, cap_maxval_at )
             # Return 
-            outdict[index] = (suss,  outdict[index][1] +  1 )
+            outdict[index] = (suss, #  Suss value
+                              outdict[index][1] +  1   # number of records with this index
+                              ) 
                               
     # Finally, normalize in some way
+    print("maxval = ", maxval)
     for k,v in outdict.items():
         outdict[k] = ( float(v[0]/maxval), v[1] )
     return outdict
 
-def cmpfunc(ai:Sequence,ok:Sequence) -> float|int :
+def cmpstring(ai:Sequence,ok:Sequence) -> float|int :
     "Compare string by strict match"
     assert len(ai) == len(ok)
     for x,y in zip(ai,ok):
-        if x.lower() == y.lower(): return 1
-        return -1
+        if x.lower() != y.lower(): return -1
+    return 1 # If we did not fail, we succeesed
 
 if __name__ == '__main__':
     fp = sys.argv[1]
     # Extract 1
+#    fields = ("verbatim_collector","verbatim_locality",)
     fields = ("verbatim_collector",)
-    outrows = extract_ref_from_Kotka_file(fp,  fields, cmpfunc)
+#    fields = ("verbatim_locality",)
+    outrows = extract_ref_from_Kotka_file(fp,  fields, cmpstring)
     outdict = handle_duplicates(outrows)
     header = fields + ("sussvalue","n_datapoints")
-    outf = itersheets.Writer("verbatim_collector.csv", encoding="utf8")
+    outf = itersheets.Writer("verbatim_leg.csv", encoding="utf8")
     outf.open("w",header)
     for (k,v) in outdict.items():
         outrow = k + v
         od = {k:v for k,v in zip(header, outrow)}
+#        pprint.pp(od)
         outf.add_row_from_dict(od,
                                itersheets.new_column_action.INSERT
                                )
