@@ -18,6 +18,8 @@ ai_content_key = "output_text" # Where is the data in the AI output JSON
 
 quality_field_name = "check" # Column with quality indicators (for Kotka, this will go to datasets)
 good_enough_marker = "GX.19333" # If this string in in quality_field_name, try to use it
+cap_maxval_at = 3 # Normalization: all values are divided by the min(cap_maxval_at, highest_suss_value)
+ 
 
 
 def data_from_AI_output(rowdict):
@@ -70,7 +72,7 @@ def extract_ref_from_Kotka_file(fp:Path,
     infile.close()
     return outrows
 
-def handle_duplicates(outrows):
+def handle_duplicates(outrows, cap_maxval = 5):
     """Convert rows to a dictionary. In case of duplicates, combines suss values.
 
     The test version sums the suss values. Finally, they are divided with the
@@ -78,7 +80,6 @@ def handle_duplicates(outrows):
     """
     outdict = {}
     maxval = 0 # LArgest absolute value in dataset
-    cap_maxval_at = 3
     # To save memory, delete from outrows as we go?
     for index, suss in outrows:
         # First data point with this index
@@ -95,8 +96,7 @@ def handle_duplicates(outrows):
                               outdict[index][1] +  1   # number of records with this index
                               ) 
                               
-    # Finally, normalize in some way
-    print("maxval = ", maxval)
+    # Finally, normalize in a primitive way: linear scaling to abs(maxval) = 1
     for k,v in outdict.items():
         outdict[k] = ( float(v[0]/maxval), v[1] )
     return outdict
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     fields = ("verbatim_collector",)
 #    fields = ("verbatim_locality",)
     outrows = extract_ref_from_Kotka_file(fp,  fields, cmpstring)
-    outdict = handle_duplicates(outrows)
+    outdict = handle_duplicates(outrows, cap_maxval = cap_maxval_at)
     header = fields + ("sussvalue","n_datapoints")
     outf = itersheets.Writer("verbatim_leg.csv", encoding="utf8")
     outf.open("w",header)
