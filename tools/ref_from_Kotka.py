@@ -1,5 +1,9 @@
 """
-Generate sussometer reference files from verified Kotka XLSX sheets
+Generate sussometer reference files from verified Kotka XLSX sheets.
+
+CSV Format uses the Excel detail output format but assumes UTF-8 encoding:
+fieldname1 [, fieldname2, ...], N-of-data-points, suss-value
+
 """
 
 import sys
@@ -46,6 +50,7 @@ def extract_ref_from_Kotka_file(fp:Path,
             ok.append(d.get(field,"") or "" )
         # Locality on it own
             suss = cmpfunc(ai,ok)
+            n_values = 394384
             outrow = (tuple(ai), suss)
             outrows.append(outrow)
     infile.close()
@@ -62,15 +67,20 @@ def handle_duplicates(outrows):
     cap_maxval_at = 3
     # To save memory, delete from outrows as we go?
     for index, suss in outrows:
-        if index not in outdict: outdict[index] = suss
+        # First data point with this index
+        if index not in outdict: outdict[index] = (suss, 1)
         else:
-            # One solution: add suss values
-            val = float(outdict[index]) + float(suss)
-            maxval = max(abs(val), maxval) # Should this be abs() or just count max positive?
-            outdict[index] = min(outdict[index] + suss, cap_maxval_at)
+            # One solution: add old and new suss values
+            suss = float( outdict[index][0] ) + float(suss) # old  + new
+            maxval = max( abs(suss), maxval )
+            # Cap suss at cap_maxval_at
+            suss = min( outdict[index][0] + suss, cap_maxval_at )
+            # Return 
+            outdict[index] = (suss,  outdict[index][1] +  1 )
+                              
     # Finally, normalize in some way
     for k,v in outdict.items():
-        outdict[k] = float(v/maxval)
+        outdict[k] = ( float(v[0]/maxval), v[1] )
     return outdict
 
 def cmpfunc(ai:Sequence,ok:Sequence) -> float|int :
@@ -86,15 +96,12 @@ if __name__ == '__main__':
     fields = ("verbatim_collector",)
     outrows = extract_ref_from_Kotka_file(fp,  fields, cmpfunc)
     outdict = handle_duplicates(outrows)
-    pprint.pp(outdict)
-    header = fields + ("sussvalue",)
-    outf = itersheets.Writer("verbatim_collector.csv")
+    header = fields + ("sussvalue","n_datapoints")
+    outf = itersheets.Writer("verbatim_collector.csv", encoding="utf8")
     outf.open("w",header)
     for (k,v) in outdict.items():
-        outrow = k + (v,)
-        print(outrow)
+        outrow = k + v
         od = {k:v for k,v in zip(header, outrow)}
-        print(od)
         outf.add_row_from_dict(od,
                                itersheets.new_column_action.INSERT
                                )
